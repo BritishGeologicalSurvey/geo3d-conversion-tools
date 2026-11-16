@@ -1,0 +1,35 @@
+[project]
+name = "asc-to-g3d"  # This is the name other apps will use to import it
+version = "0.1.0"
+description = "ASC to G3D app"
+requires-python = ">=3.14"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE", "LICEN[CS]E.*"]
+
+# Dependencies required specifically by this package
+# ~= compatible version
+dependencies = [
+    "numpy~=2.4.6",
+    "pandas~=3.0.3",
+    "pydantic>=2.13.4",
+    "typer~=0.26.7",
+]
+
+[project.scripts]
+# CLI command name = "module_path.file:function_name"
+# Defines a global CLI command that points to the main() function in cli.py
+run-cli = "asc_to_g3d.cli:main"
+
+# This is the magic block uv creates when linking workspace members locally
+[tool.uv.sources]
+# core-models = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+
+[tool.ruff]
+# 💡 Tells the sub-project to look up two directories and inherit the root ruff.toml
+extend = "../../ruff.toml"

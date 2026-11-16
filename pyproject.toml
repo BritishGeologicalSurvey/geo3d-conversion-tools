@@ -1,0 +1,54 @@
+[project]
+name = "asc-to-g3d-repo"
+version = "0.1.0"
+description = "ASC to G3D converter monorepo"
+requires-python = ">=3.14"
+# Root is usually non-deployable, so it doesn't need dependencies here
+dependencies = []
+license = "MIT"
+license-files = ["LICENSE", "LICEN[CS]E.*"]
+
+
+[tool.uv.workspace]
+members = [
+    "applications/*",
+]
+
+# test coverage
+[tool.coverage.run]
+relative_files = true
+source = ["applications"]
+
+# pytest
+[tool.pytest.ini_options]
+addopts = "--junitxml=junit.xml --cov --cov-report=xml:coverage.xml --cov-report=term" # test coverage
+testpaths = ["applications"]
+# pytest will manually inject that exact folder into Python's lookup path (sys.path) before it attempts to import any of your test modules
+pythonpath = [
+    "applications/asc-to-g3d/src",
+]
+
+
+# type checking, also install VSCode Pyright extension (by Microsoft)
+[tool.pyright]
+include = ["applications"]
+typeCheckingMode = "standard" # Options: off, basic, standard, strict (very!) (research py.typed files)
+pythonVersion = "3.14"
+venvPath = "."
+venv = ".venv"
+# Point Pyright directly to the inner source directories of your local libraries
+# Not needed apparently
+# extraPaths = [
+#     "applications/asc-to-g3d/src",
+# ]
+
+
+[dependency-groups]
+dev = [
+    "datamodel-code-generator>=0.64.0",
+    "pyinstaller>=6.20.0",
+    "pyright[nodejs]>=1.1.410",
+    "pytest>=9.0.3",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.15.17",
+]

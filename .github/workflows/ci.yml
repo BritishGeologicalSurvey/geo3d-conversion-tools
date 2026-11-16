@@ -1,0 +1,156 @@
+name: CI and Release
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Ruff lint
+        run: uvx ruff check .
+
+      - name: Ruff format check
+        run: uvx ruff format --check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Pyright
+        run: uv run pyright
+
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Run tests
+        run: uv run pytest
+
+  build:
+    name: Build ${{ matrix.os }}
+
+    needs:
+      - lint
+      - typecheck
+      - test
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install dependencies
+        run: uv sync --all-packages
+
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y binutils
+
+      - name: Build executable
+        run: >
+          uv run pyinstaller
+          --onefile
+          --name asc-to-g3d
+          applications/asc-to-g3d/src/asc_to_g3d/cli.py
+
+      - name: Package artifact (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          mkdir release
+          cp dist/asc-to-g3d release/asc-to-g3d-linux
+
+      - name: Package artifact (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          mkdir release
+          cp dist/asc-to-g3d release/asc-to-g3d-macos
+
+      - name: Package artifact (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path release
+          Copy-Item dist/asc-to-g3d.exe release/asc-to-g3d-windows.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: asc-to-g3d-${{ runner.os }}
+          path: release/*
+
+  release:
+    needs:
+      - build
+
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*
